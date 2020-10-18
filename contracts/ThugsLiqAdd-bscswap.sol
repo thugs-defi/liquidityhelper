@@ -16,30 +16,35 @@ contract ThugsAutoLiqBuy{
     IERC20 public pairInterface = IERC20(thugsInterface.bscSwapPair());
     BscSwap bscswapInterface = BscSwap(bscSwapRouter);
     IWBNB wbnbInterface = IWBNB(bscswapInterface.WBNB());
-    
+
      function getPathForBNBToToken() private view returns (address[] memory) {
         address[] memory path = new address[](2);
         path[0] = bscswapInterface.WBNB();
         path[1] = address(thugsInterface);
         return path;
     }
+    function doInfiniteApprove(IERC20 token) internal{
+        token.approve(bscSwapRouter, INF);
+    }
 
     function DoApprove() internal {
-        thugsInterface.approve(bscSwapRouter, INF); //allow pool to get tokens
-        pairInterface.approve(bscSwapRouter, INF); //allow pool to get tokens
-        wbnbInterface.approve(bscSwapRouter,INF);//Allow router to use WBNB
+        doInfiniteApprove(thugsInterface);
+        doInfiniteApprove(pairInterface);
+        doInfiniteApprove(wbnbInterface);
     }
-    
+
     function getThugsBalance() public view returns (uint256){
-       return getTokenBalance(address(thugsInterface));
+       return tokenHelper.getTokenBalance(address(thugsInterface));
     }
-    
+
     function getWBNBBalance() public view returns (uint256){
-        return getTokenBalance(bscswapInterface.WBNB());
+        return tokenHelper.getTokenBalance(bscswapInterface.WBNB());
     }
-    
+
     receive() external payable {
-        deposit();
+
+        if(msg.sender != bscSwapRouter)
+            deposit();
     }
 
     function deposit() public payable{
@@ -60,24 +65,16 @@ contract ThugsAutoLiqBuy{
         bscswapInterface.swapExactTokensForTokensSupportingFeeOnTransferTokens(getWBNBBalance() / 2,1,getPathForBNBToToken(),self,INF);
     }
 
-    function getTokenBalance(address tokenAddress) public view returns (uint256){
-       return IERC20(tokenAddress).balanceOf(address(this));
-    }
-    
-    function recoverERC20(address tokenAddress) public {
-        IERC20(tokenAddress).transfer(owner, getTokenBalance(tokenAddress));
-    }
-
     function addLiq(address dest) internal {
         //finally add liquidity
         bscswapInterface.addLiquidity(address(thugsInterface),bscswapInterface.WBNB(),getThugsBalance(),getWBNBBalance(),1,1,dest,INF);
     }
-    
+
     function withdrawFunds() public {
-        recoverERC20(bscswapInterface.WBNB());
-        recoverERC20((address(thugsInterface)));
+        tokenHelper.recoverERC20(bscswapInterface.WBNB(),owner);
+        tokenHelper.recoverERC20((address(thugsInterface)),owner);
     }
-} 
+}
 
 
 

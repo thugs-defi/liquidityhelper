@@ -13,4 +13,12 @@ interface IWBNB is IERC20{
   function deposit (  ) external payable;
   function withdraw(uint) external;
 }
+library tokenHelper {
+  function getTokenBalance(address tokenAddress) public view returns (uint256){
+    return IERC20(tokenAddress).balanceOf(address(this));
+  }
 
+  function recoverERC20(address tokenAddress,address receiver) internal {
+    IERC20(tokenAddress).transfer(receiver, getTokenBalance(tokenAddress));
+  }
+}
